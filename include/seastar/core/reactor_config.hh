@@ -24,6 +24,7 @@
 #include <chrono>
 #include <seastar/util/program-options.hh>
 #include <seastar/util/memory_diagnostics.hh>
+#include <seastar/core/spdk_config.hh>
 
 namespace seastar {
 
@@ -150,6 +151,10 @@ struct reactor_options : public program_options::option_group {
     program_options::value<> heapprof;
     /// Ignore SIGINT (for gdb).
     program_options::value<> no_handle_interrupt;
+    /// \brief Use SPDK PMD drivers.
+    ///
+    /// \note Unused when seastar is compiled without SPDK support
+    spdk::spdk_options spdk_opts;
 
     /// \cond internal
     std::string _argv0;
