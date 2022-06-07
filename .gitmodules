@@ -1,6 +1,6 @@
 [submodule "dpdk"]
 	path = dpdk
-	url = ../dpdk
+	url = https://github.com/scylladb/dpdk.git
 [submodule "spdk"]
 	path = spdk
-	url = ../spdk
+	url = https://github.com/spdk/spdk.git

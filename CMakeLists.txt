@@ -770,7 +770,9 @@ if (Seastar_SPDK)
       spdk::bdev
       spdk::accel
       spdk::init
-      spdk::env_dpdk)
+      spdk::env_dpdk
+      uuid
+      aio)
 endif ()
 
 set (Seastar_SANITIZE_MODES "Debug" "Sanitize")
