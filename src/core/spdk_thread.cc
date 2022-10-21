@@ -91,7 +91,7 @@ future<> executor::start()
     }));
     if (seastar::this_shard_id() == 0) {
         spdk_thread_lib_init_ext(thread_do_op, thread_op_supported,
-                                 sizeof(internal::thread_entry));
+                                 sizeof(internal::thread_entry), SPDK_DEFAULT_MSG_MEMPOOL_SIZE);
         sharded_executor_t& instance = container();
         s_executor = &instance;
     }
