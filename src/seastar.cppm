@@ -41,6 +41,7 @@
 
 module;
 
+#include <exception>
 #include <seastar/util/std-compat.hh>
 #include <seastar/core/abortable_fifo.hh>
 #include <seastar/core/abort_on_ebadf.hh>
@@ -121,8 +122,6 @@ module;
 #include <seastar/core/shared_mutex.hh>
 #include <seastar/core/shared_ptr.hh>
 #include <seastar/core/shared_ptr_debug_helper.hh>
-// NOT: #include <seastar/core/shared_ptr_incomplete.hh>
-// shared_ptr_incomplete.hh provides a split-header pattern for lw_shared_ptr
 // with incomplete types.  It must NOT be in the module GMF because importing
 // the module would make the template body visible too early, causing
 // static_cast failures when lw_shared_ptr<T>::~lw_shared_ptr is
@@ -172,6 +171,7 @@ module;
 #include <seastar/util/tmp_file.hh>
 #include <seastar/util/memory-data-source.hh>
 #include <seastar/util/memory-data-sink.hh>
+#include <seastar/util/memory_diagnostics.hh>
 
 #include <seastar/net/arp.hh>
 #include <seastar/net/packet.hh>
@@ -198,6 +198,7 @@ module;
 #include <seastar/http/file_handler.hh>
 #include <seastar/http/function_handlers.hh>
 #include <seastar/http/httpd.hh>
+#include <seastar/http/api_docs.hh>
 #include <seastar/http/json_path.hh>
 #include <seastar/http/reply.hh>
 #include <seastar/http/response_parser.hh>
@@ -214,14 +215,15 @@ module;
 #include <seastar/rpc/rpc_types.hh>
 #include <seastar/rpc/lz4_compressor.hh>
 #include <seastar/rpc/lz4_fragmented_compressor.hh>
+#include <seastar/rpc/multi_algo_compressor_factory.hh>
 
 #include <seastar/coroutine/all.hh>
 #include <seastar/coroutine/as_future.hh>
-#include <seastar/coroutine/exception.hh>
 #include <seastar/coroutine/generator.hh>
 #include <seastar/coroutine/maybe_yield.hh>
 #include <seastar/coroutine/parallel_for_each.hh>
 #include <seastar/coroutine/switch_to.hh>
+#include <seastar/coroutine/try_future.hh>
 
 export module seastar;
 
@@ -241,12 +243,18 @@ using seastar::make_exception_future;
 using seastar::current_exception_as_future;
 using seastar::futurize;
 using seastar::futurize_invoke;
+using seastar::futurize_apply;
+using seastar::CanInvoke;
 using seastar::thread;
 using seastar::thread_attributes;
 using seastar::reactor;
 using seastar::engine;
 using seastar::local_engine;
+using seastar::engine_is_ready;
 using seastar::smp;
+using seastar::make_task;
+using seastar::schedule;
+using seastar::memory_allocator;
 using seastar::this_smp;
 using seastar::this_smp_shard_count;
 using seastar::this_smp_all_shards;
@@ -283,9 +291,14 @@ using seastar::named_semaphore;
 using seastar::named_semaphore_timed_out;
 using seastar::broken_named_semaphore;
 using seastar::named_semaphore_exception_factory;
+using seastar::semaphore_default_exception_factory;
+using seastar::default_timeout_exception_factory;
 using seastar::get_units;
 using seastar::consume_units;
 using seastar::try_get_units;
+using seastar::KB;
+using seastar::MB;
+using seastar::GB;
 using seastar::with_semaphore;
 using seastar::gate;
 using seastar::gate_closed_exception;
@@ -298,8 +311,13 @@ using seastar::condition_variable_timed_out;
 using seastar::rwlock;
 using seastar::basic_rwlock;
 using seastar::shared_mutex;
+using seastar::with_shared;
+using seastar::get_shared_lock;
+using seastar::with_lock;
+using seastar::get_unique_lock;
 using seastar::abort_source;
 using seastar::abort_requested_exception;
+using seastar::cache_line_size;
 
 // Containers
 using seastar::circular_buffer;
@@ -325,6 +343,7 @@ using seastar::rename_scheduling_group;
 using seastar::create_scheduling_supergroup;
 using seastar::destroy_scheduling_supergroup;
 using seastar::max_scheduling_groups;
+using seastar::make_scheduling_group_key_config;
 using seastar::need_preempt;
 
 // Idle CPU handler
@@ -346,6 +365,7 @@ using seastar::sharded_parameter;
 using seastar::async_sharded_service;
 using seastar::peering_sharded_service;
 using seastar::no_sharded_instance_exception;
+using seastar::adder;
 
 // I/O
 using seastar::file;
@@ -354,8 +374,12 @@ using seastar::open_flags;
 using seastar::access_flags;
 using seastar::file_permissions;
 using seastar::rename_flags;
+using seastar::file_accessible;
 using seastar::follow_symlink;
 using seastar::directory_entry_type;
+using seastar::file_type;
+using seastar::make_unbound_datagram_channel;
+using seastar::make_bound_datagram_channel;
 using seastar::directory_entry;
 using seastar::list_directory_generator_type;
 using seastar::file_handle;
@@ -388,10 +412,18 @@ using seastar::file_size;
 using seastar::fs_avail;
 using seastar::make_file_input_stream;
 using seastar::make_file_output_stream;
+using seastar::make_file_data_sink;
+using seastar::make_file_data_source;
 using seastar::make_pipe_input_stream;
 using seastar::make_pipe_output_stream;
 using seastar::with_file;
 using seastar::with_file_close_on_failure;
+using seastar::link_file;
+using seastar::make_directory;
+using seastar::recursive_touch_directory;
+using seastar::touch_directory;
+using seastar::getgrnam;
+using seastar::group_details;
 using seastar::copy;
 using seastar::consumption_result;
 using seastar::stop_consuming;
@@ -402,6 +434,7 @@ using seastar::continue_consuming;
 using seastar::socket;
 using seastar::server_socket;
 using seastar::connected_socket;
+using seastar::session_dn;
 using seastar::accept_result;
 using seastar::socket_address;
 using seastar::listen_options;
@@ -475,12 +508,20 @@ using seastar::simple_memory_output_stream;
 using seastar::simple_output_stream;
 using seastar::measuring_output_stream;
 using seastar::fragmented_memory_input_stream;
+using seastar::with_serialized_stream;
+using seastar::memory_input_stream;
 
 // Error handling
 using seastar::on_internal_error;
 using seastar::on_internal_error_noexcept;
 using seastar::on_fatal_internal_error;
 using seastar::set_abort_on_internal_error;
+
+// Subprocess (also re-exported under seastar::experimental for legacy
+// code that used the deprecated namespace).
+using seastar::process;
+using seastar::spawn_parameters;
+using seastar::spawn_process;
 using seastar::set_abort_on_ebadf;
 using seastar::current_backtrace;
 using seastar::throw_with_backtrace;
@@ -538,6 +579,7 @@ using seastar::futurize_t;
 using seastar::is_future;
 using seastar::file_input_stream_options;
 using seastar::free_deleter;
+using seastar::make_object_deleter;
 using seastar::count_leading_zeros;
 using seastar::count_trailing_zeros;
 using seastar::current_backtrace_tasklocal;
@@ -557,6 +599,7 @@ using seastar::inheriting_execution_stage;
 using seastar::inheriting_concrete_execution_stage;
 using seastar::scheduling_group_key;
 using seastar::scheduling_group_key_config;
+using seastar::map_reduce_scheduling_group_specific;
 using seastar::scheduling_group_key_create;
 using seastar::scheduling_group_get_specific;
 using seastar::reduce_scheduling_group_specific;
@@ -584,6 +627,14 @@ using seastar::file_desc;
 using seastar::make_socket;
 using seastar::throw_pthread_error;
 using seastar::deferred_action;
+using seastar::indirect_equal_to;
+
+}
+
+export namespace seastar::bitsets {
+
+using seastar::bitsets::set_iterator;
+using seastar::bitsets::for_each_set;
 
 }
 
@@ -595,12 +646,29 @@ using seastar::coroutine::as_future;
 using seastar::coroutine::return_exception_ptr;
 using seastar::coroutine::exception;
 using seastar::coroutine::parallel_for_each;
+using seastar::coroutine::return_exception;
+using seastar::coroutine::switch_to;
+using seastar::coroutine::try_future;
+using seastar::coroutine::all;
+using seastar::coroutine::operator co_await;
+
+}
+
+export namespace seastar::internal {
+
 
 }
 
 export namespace seastar::coroutine::experimental {
 
 using seastar::coroutine::experimental::generator;
+
+}
+
+export namespace seastar::experimental {
+
+using seastar::experimental::process;
+using seastar::experimental::spawn_parameters;
 
 }
 
@@ -627,6 +695,12 @@ using seastar::metrics::metric_type_def;
 using seastar::metrics::relabel_config;
 using seastar::metrics::metric_family_config;
 using seastar::metrics::relabel_config_action;
+using seastar::metrics::metric_relabeling_result;
+using seastar::metrics::get_relabel_configs;
+using seastar::metrics::set_relabel_configs;
+using seastar::metrics::set_metric_family_configs;
+using seastar::metrics::metric_definition;
+using seastar::metrics::skip_when_empty;
 
 }
 
@@ -637,18 +711,21 @@ using seastar::metrics::impl::get_value_map;
 using seastar::metrics::impl::value_vector;
 using seastar::metrics::impl::escaped_string;
 using seastar::metrics::impl::labels_type;
+using seastar::metrics::impl::metric_value;
 
 }
 
 export namespace seastar::memory {
 
 using seastar::memory::stats;
+using seastar::memory::statistics;
 using seastar::memory::scoped_large_allocation_warning_threshold;
 using seastar::memory::scoped_large_allocation_warning_disable;
 using seastar::memory::get_large_allocation_warning_threshold;
 using seastar::memory::scoped_critical_alloc_section;
 using seastar::memory::reclaimer;
 using seastar::memory::reclaiming_result;
+using seastar::memory::reclaimer_scope;
 using seastar::memory::local_failure_injector;
 using seastar::memory::with_allocation_failures;
 using seastar::memory::set_min_free_pages;
@@ -658,7 +735,26 @@ using seastar::memory::allocation_site;
 using seastar::memory::sampled_memory_profile;
 using seastar::memory::set_heap_profiling_sampling_rate;
 using seastar::memory::page_size;
+using seastar::memory::on_alloc_point;
+using seastar::memory::disable_abort_on_alloc_failure_temporarily;
+using seastar::memory::free_memory;
+using seastar::memory::min_free_memory;
+using seastar::memory::memory_layout;
+using seastar::memory::get_memory_layout;
+using seastar::memory::memory_diagnostics_writer;
+using seastar::memory::set_additional_diagnostics_producer;
+using seastar::memory::generate_memory_diagnostics_report;
 
+}
+
+export namespace seastar::scollectd {
+using seastar::scollectd::collectd_value;
+using seastar::scollectd::data_type;
+using seastar::scollectd::type_instance_id;
+using seastar::scollectd::get_collectd_value;
+using seastar::scollectd::get_collectd_ids;
+using seastar::scollectd::is_enabled;
+using seastar::scollectd::enable;
 }
 
 export namespace seastar::prometheus {
@@ -701,6 +797,15 @@ using seastar::tls::ERROR_UNSUPPORTED_VERSION;
 using seastar::tls::ERROR_NO_CIPHER_SUITES;
 using seastar::tls::ERROR_DECRYPTION_FAILED;
 using seastar::tls::ERROR_MAC_VERIFY_FAILED;
+using seastar::tls::socket;
+using seastar::tls::error_category;
+using seastar::tls::get_cipher_suite;
+using seastar::tls::get_protocol_version;
+using seastar::tls::get_dn_information;
+using seastar::tls::get_alt_name_information;
+using seastar::tls::verification_error;
+using seastar::tls::wrap_client;
+using seastar::tls::check_session_is_resumed;
 
 }
 
@@ -715,18 +820,22 @@ using seastar::net::inet_address;
 using seastar::net::ipv4_tcp;
 using seastar::net::ipv4_udp;
 using seastar::net::udp_channel;
+using seastar::net::datagram_channel;
 using seastar::net::datagram;
 using seastar::net::get_impl;
 using seastar::net::hostent;
 using seastar::net::hton;
 using seastar::net::ntoh;
 using seastar::net::tcp_keepalive_params;
+using seastar::net::packed;
+using seastar::net::operator<<;
 
 }
 
 export namespace seastar::net::dns {
 
 using seastar::net::dns::resolve_name;
+using seastar::net::dns::resolve_addr;
 using seastar::net::dns::get_host_by_name;
 
 }
@@ -735,6 +844,7 @@ export namespace seastar::http {
 
 using seastar::http::reply;
 using seastar::http::request;
+using seastar::http::operator<<;
 
 }
 
@@ -756,10 +866,19 @@ using seastar::httpd::http_server_tester;
 using seastar::httpd::routes;
 using seastar::httpd::handler_base;
 using seastar::httpd::function_handler;
+using seastar::httpd::future_handler_function;
+using seastar::httpd::handle_function;
 using seastar::httpd::url;
 using seastar::httpd::operation_type;
 using seastar::httpd::json_request_function;
 using seastar::httpd::future_json_function;
+using seastar::httpd::type2str;
+using seastar::httpd::directory_handler;
+using seastar::httpd::file_handler;
+using seastar::httpd::api_registry_builder;
+using seastar::httpd::api_registry_builder20;
+using seastar::httpd::content_replace;
+using seastar::httpd::http_server_control;
 
 }
 
@@ -783,6 +902,20 @@ using seastar::rpc::streaming_domain_type;
 using seastar::rpc::protocol;
 using seastar::rpc::lz4_compressor;
 using seastar::rpc::lz4_fragmented_compressor;
+using seastar::rpc::no_wait_type;
+using seastar::rpc::stats;
+using seastar::rpc::multi_algo_compressor_factory;
+using seastar::rpc::client_info;
+using seastar::rpc::optional;
+using seastar::rpc::client_options;
+using seastar::rpc::server_options;
+using seastar::rpc::resource_limits;
+using seastar::rpc::canceled_error;
+using seastar::rpc::tuple;
+using seastar::rpc::no_wait_type;
+using seastar::rpc::no_wait;
+using seastar::rpc::isolation_config;
+using seastar::rpc::server;
 
 }
 
@@ -793,6 +926,10 @@ using seastar::json::json_void;
 using seastar::json::json_return_type;
 using seastar::json::formatter;
 using seastar::json::stream_range_as_array;
+using seastar::json::json_base;
+using seastar::json::json_element;
+using seastar::json::json_chunked_list;
+using seastar::json::stream_object;
 
 }
 
@@ -804,6 +941,11 @@ using seastar::util::basic_memory_data_sink;
 using seastar::util::read_entire_stream_contiguous;
 using seastar::util::as_input_stream;
 using seastar::util::read_entire_file_contiguous;
+using seastar::util::memory_data_sink;
+using seastar::util::memory_data_source;
+using seastar::util::skip_entire_stream;
+using seastar::util::read_entire_stream;
+using seastar::util::read_entire_stream_contiguous;
 
 }
 
@@ -824,6 +966,31 @@ export namespace seastar::program_options {
 using seastar::program_options::string_map;
 using seastar::program_options::value;
 using seastar::program_options::option_group;
+using seastar::program_options::operator>>;
+using seastar::program_options::operator<<;
+using seastar::program_options::operator==;
+using seastar::program_options::operator!=;
+using seastar::program_options::validate;
+using seastar::program_options::get_or_default;
+
+}
+
+export namespace seastar {
+
+using seastar::operator+;
+using seastar::operator<<;
+using seastar::operator==;
+using seastar::operator!=;
+using seastar::operator<;
+using seastar::operator>;
+using seastar::operator<=;
+using seastar::operator>=;
+using seastar::operator co_await;
+using seastar::operator|;
+using seastar::operator&;
+using seastar::operator|=;
+using seastar::operator>>;
+using seastar::operator&=;
 
 }
 
@@ -843,5 +1010,16 @@ struct hash<seastar::net::inet_address>;
 
 template <>
 struct hash<seastar::rpc::connection_id>;
+
+template<typename T, typename... Args>
+class coroutine_traits<seastar::future<T>, Args...>;
+
+}
+
+// FIXME: deprecate and remove
+export namespace fmt {
+
+template <>
+struct formatter<std::exception_ptr>;
 
 }
