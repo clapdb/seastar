@@ -19,6 +19,7 @@
  * Copyright (C) 2023 ScyllaDB Ltd.
  */
 
+import std.compat;
 import seastar;
 
 using namespace seastar;

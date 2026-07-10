@@ -22,7 +22,11 @@
 #pragma once
 
 #include <ostream>
+#if defined(STDB_USE_FMT_MODULE)
+#include <seastar/util/fmt.hh>
+#else
 #include <fmt/core.h>
+#endif
 
 namespace seastar {
 

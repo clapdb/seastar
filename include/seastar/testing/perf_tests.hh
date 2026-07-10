@@ -24,7 +24,11 @@
 #include <atomic>
 #include <memory>
 
+#if defined(STDB_USE_FMT_MODULE)
+#include <seastar/util/fmt.hh>
+#else
 #include <fmt/format.h>
+#endif
 
 #include <seastar/core/coroutine.hh>
 #include <seastar/core/future.hh>

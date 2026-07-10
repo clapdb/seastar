@@ -22,7 +22,11 @@
 
 #pragma once
 
+#if defined(STDB_USE_FMT_MODULE)
+#include <seastar/util/fmt.hh>
+#else
 #include <fmt/core.h>
+#endif
 #include <exception>
 
 namespace seastar {
@@ -42,7 +46,7 @@ struct default_timeout_exception_factory {
 
 } // namespace seastar
 
-#if FMT_VERSION < 100000
+#if !defined(STDB_USE_FMT_MODULE) && FMT_VERSION < 100000
 // fmt v10 introduced formatter for std::exception
 template <>
 struct fmt::formatter<seastar::timed_out_error> : fmt::formatter<string_view> {

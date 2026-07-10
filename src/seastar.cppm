@@ -200,6 +200,7 @@ module;
 #include <seastar/http/httpd.hh>
 #include <seastar/http/api_docs.hh>
 #include <seastar/http/json_path.hh>
+#include <seastar/http/matchrules.hh>
 #include <seastar/http/reply.hh>
 #include <seastar/http/response_parser.hh>
 #include <seastar/http/request.hh>
@@ -864,6 +865,7 @@ using seastar::httpd::base_exception;
 using seastar::httpd::http_server;
 using seastar::httpd::http_server_tester;
 using seastar::httpd::routes;
+using seastar::httpd::match_rule;
 using seastar::httpd::handler_base;
 using seastar::httpd::function_handler;
 using seastar::httpd::future_handler_function;

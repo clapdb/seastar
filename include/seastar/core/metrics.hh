@@ -22,12 +22,17 @@
 #pragma once
 
 #include <concepts>
+#include <cmath>
 #include <functional>
 #include <limits>
 #include <map>
 #include <type_traits>
 #include <variant>
+#if defined(STDB_USE_FMT_MODULE)
+#include <seastar/util/fmt.hh>
+#else
 #include <fmt/format.h>
+#endif
 #include <seastar/core/sstring.hh>
 #include <seastar/core/shared_ptr.hh>
 #include <seastar/core/metrics_registration.hh>

@@ -35,7 +35,13 @@
 #include <seastar/core/shard_id.hh>
 #include <seastar/core/resource.hh>
 
+#ifndef SEASTAR_MODULE
+#if defined(STDB_USE_FMT_MODULE)
+#include <seastar/util/fmt.hh>
+#else
 #include <fmt/ostream.h>
+#endif
+#endif
 #include <sys/time.h>
 #include <bitset>
 #include <thread>
@@ -453,4 +459,3 @@ inline constexpr std::chrono::milliseconds POLLER_SLEEP_TIMEOUT(5);
 
 
 template <> struct fmt::formatter<seastar::reactor_backend_selector> : fmt::ostream_formatter {};
-

@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <optional>
+#include <sstream>
 #include <stdexcept>
 #include <vector>
 
@@ -134,5 +135,18 @@ struct hash<seastar::net::inet_address> {
 };
 }
 
-template <> struct fmt::formatter<seastar::net::inet_address> : fmt::ostream_formatter {};
-template <> struct fmt::formatter<seastar::net::inet_address::family> : fmt::ostream_formatter {};
+namespace seastar::fmt_internal {
+struct inet_ostream_fmt_formatter {
+    constexpr auto parse(fmt::format_parse_context& ctx) -> fmt::format_parse_context::iterator { return ctx.begin(); }
+
+    template <typename T>
+    auto format(const T& value, fmt::format_context& ctx) const -> decltype(ctx.out()) {
+        std::ostringstream out;
+        out << value;
+        return fmt::format_to(ctx.out(), "{}", out.str());
+    }
+};
+}  // namespace seastar::fmt_internal
+
+template <> struct fmt::formatter<seastar::net::inet_address> : seastar::fmt_internal::inet_ostream_fmt_formatter {};
+template <> struct fmt::formatter<seastar::net::inet_address::family> : seastar::fmt_internal::inet_ostream_fmt_formatter {};
