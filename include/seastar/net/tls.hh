@@ -25,7 +25,11 @@
 #include <unordered_set>
 #include <map>
 #include <any>
+#if defined(STDB_USE_FMT_MODULE)
+#include <seastar/util/fmt.hh>
+#else
 #include <fmt/format.h>
+#endif
 
 #include <seastar/core/future.hh>
 #include <seastar/core/internal/api-level.hh>

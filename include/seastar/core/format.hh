@@ -22,7 +22,11 @@
 #pragma once
 
 #include <seastar/core/sstring.hh>
+#if defined(STDB_USE_FMT_MODULE)
+#include <seastar/util/fmt.hh>
+#else
 #include <fmt/format.h>
+#endif
 
 namespace seastar {
 

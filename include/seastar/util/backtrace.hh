@@ -35,7 +35,11 @@
 #include <memory>
 #include <variant>
 #include <boost/container/static_vector.hpp>
+#if defined(STDB_USE_FMT_MODULE)
+#include <seastar/util/fmt.hh>
+#else
 #include <fmt/ostream.h>
+#endif
 
 namespace seastar {
 

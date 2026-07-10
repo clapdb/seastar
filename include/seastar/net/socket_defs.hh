@@ -27,7 +27,12 @@
 #include <cassert>
 #include <functional>
 #include <iosfwd>
+#include <sstream>
+#if defined(STDB_USE_FMT_MODULE)
+#include <seastar/util/fmt.hh>
+#else
 #include <fmt/ostream.h>
+#endif
 #include <seastar/net/byteorder.hh>
 #include <seastar/net/unix_address.hh>
 
@@ -187,6 +192,19 @@ struct hash<seastar::transport> {
 
 }
 
-template <> struct fmt::formatter<seastar::socket_address> : fmt::ostream_formatter {};
-template <> struct fmt::formatter<seastar::ipv4_addr> : fmt::ostream_formatter {};
-template <> struct fmt::formatter<seastar::ipv6_addr> : fmt::ostream_formatter {};
+namespace seastar::fmt_internal {
+struct ostream_fmt_formatter {
+    constexpr auto parse(fmt::format_parse_context& ctx) -> fmt::format_parse_context::iterator { return ctx.begin(); }
+
+    template <typename T>
+    auto format(const T& value, fmt::format_context& ctx) const -> decltype(ctx.out()) {
+        std::ostringstream out;
+        out << value;
+        return fmt::format_to(ctx.out(), "{}", out.str());
+    }
+};
+}  // namespace seastar::fmt_internal
+
+template <> struct fmt::formatter<seastar::socket_address> : seastar::fmt_internal::ostream_fmt_formatter {};
+template <> struct fmt::formatter<seastar::ipv4_addr> : seastar::fmt_internal::ostream_fmt_formatter {};
+template <> struct fmt::formatter<seastar::ipv6_addr> : seastar::fmt_internal::ostream_fmt_formatter {};

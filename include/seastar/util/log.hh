@@ -34,10 +34,15 @@
 #include <iosfwd>
 #include <atomic>
 #include <mutex>
+#include <sstream>
 #include <type_traits>
+#if defined(STDB_USE_FMT_MODULE)
+#include <seastar/util/fmt.hh>
+#else
 #include <fmt/core.h>
 #include <fmt/format.h>
 #include <fmt/std.h>
+#endif
 
 /// \addtogroup logging
 /// @{
@@ -97,8 +102,12 @@ public:
         /// implicitly construct format_info from a constant format string
         /// \param fmt - {fmt} style format string
         template <std::convertible_to<std::string_view> S>
+#if defined(STDB_USE_FMT_MODULE)
+        consteval format_info(const S& format, std::source_location loc = std::source_location::current()) noexcept
+#else
         FMT_CONSTEVAL inline format_info(const S& format,
                            std::source_location loc = std::source_location::current()) noexcept
+#endif
             : format(format)
             , loc(loc)
         {}
@@ -111,7 +120,9 @@ public:
             : format(s)
             , loc(loc)
         {}
-#if FMT_VERSION >= 100000
+#if defined(STDB_USE_FMT_MODULE)
+        using runtime_format_string_t = fmt::runtime_format_string<char>;
+#elif FMT_VERSION >= 100000
         using runtime_format_string_t = fmt::runtime_format_string<char>;
 #else
         using runtime_format_string_t = fmt::basic_runtime<char>;
@@ -122,7 +133,11 @@ public:
             , loc(loc)
         {}
         /// implicitly construct format_info with no format string.
+#if defined(STDB_USE_FMT_MODULE)
+        consteval format_info() noexcept
+#else
         FMT_CONSTEVAL format_info() noexcept
+#endif
             : format_info("")
         {}
         fmt::format_string<Args...> format;

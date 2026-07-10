@@ -914,7 +914,7 @@ target_link_libraries (seastar
     Boost::boost
     Boost::program_options
     c-ares::cares
-    fmt::fmt
+    ${Seastar_FMT_TARGET}
     lz4::lz4
   PRIVATE
     ${CMAKE_DL_LIBS}

@@ -602,7 +602,7 @@ dns_resolver::impl::get_host_by_addr(inet_address addr) {
 
     dns_call call(*this);
 
-    ares_gethostbyaddr(_channel, p->addr.data(), p->addr.size(), int(p->addr.in_family()), [](void* arg, int status, int timeouts, ::hostent* host) {
+    ares_gethostbyaddr(_channel, p->addr.data(), p->addr.size(), int(p->addr.in_family()), [](void* arg, int status, int timeouts, const ::hostent* host) {
         // we do potentially allocating operations below, so wrap the pointer in a
         // unique here.
         std::unique_ptr<promise_wrap> p(reinterpret_cast<promise_wrap *>(arg));

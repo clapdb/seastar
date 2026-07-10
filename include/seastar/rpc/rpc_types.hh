@@ -21,14 +21,19 @@
 
 #pragma once
 
+#if defined(STDB_USE_FMT_MODULE)
+#include <seastar/util/fmt.hh>
+#else
 #include <fmt/ostream.h>
 #if FMT_VERSION >= 100000
 #include <fmt/std.h>
+#endif
 #endif
 
 #include <seastar/net/api.hh>
 #include <stdexcept>
 #include <string>
+#include <sstream>
 #include <any>
 #include <boost/intrusive/slist.hpp>
 #include <seastar/util/assert.hh>
@@ -437,9 +442,17 @@ struct tuple_element<I, seastar::rpc::tuple<T...>> : tuple_element<I, tuple<T...
 
 }
 
-template <> struct fmt::formatter<seastar::rpc::connection_id> : fmt::ostream_formatter {};
+template <>
+struct fmt::formatter<seastar::rpc::connection_id> {
+    constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+    auto format(const seastar::rpc::connection_id& id, fmt::format_context& ctx) const {
+        std::ostringstream out;
+        out << id;
+        return fmt::format_to(ctx.out(), "{}", out.str());
+    }
+};
 
-#if FMT_VERSION < 100000
+#if !defined(STDB_USE_FMT_MODULE) && FMT_VERSION < 100000
 // fmt v10 introduced formatter for std::exception
 template <std::derived_from<seastar::rpc::error> T>
 struct fmt::formatter<T> : fmt::formatter<string_view> {
@@ -449,7 +462,7 @@ struct fmt::formatter<T> : fmt::formatter<string_view> {
 };
 #endif
 
-#if FMT_VERSION < 100000
+#if !defined(STDB_USE_FMT_MODULE) && FMT_VERSION < 100000
 template <typename T>
 struct fmt::formatter<seastar::rpc::optional<T>> {
     constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
