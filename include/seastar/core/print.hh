@@ -23,11 +23,7 @@
 
 #include <seastar/core/format.hh>
 #include <seastar/core/sstring.hh>
-#if defined(STDB_USE_FMT_MODULE)
-#include <seastar/util/fmt.hh>
-#else
 #include <fmt/ostream.h>
-#endif
 #include <iostream>
 #include <iomanip>
 #include <chrono>

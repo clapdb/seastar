@@ -31,11 +31,7 @@
 #include <utility>
 #include <variant>
 #include <vector>
-#if defined(STDB_USE_FMT_MODULE)
-#include <seastar/util/fmt.hh>
-#else
 #include <fmt/format.h>
-#endif
 #include <seastar/core/iostream.hh>
 #include <seastar/core/posix.hh>
 #include <seastar/core/sstring.hh>

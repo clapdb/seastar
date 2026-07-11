@@ -36,11 +36,7 @@
 #include <seastar/core/resource.hh>
 
 #ifndef SEASTAR_MODULE
-#if defined(STDB_USE_FMT_MODULE)
-#include <seastar/util/fmt.hh>
-#else
 #include <fmt/ostream.h>
-#endif
 #endif
 #include <sys/time.h>
 #include <bitset>

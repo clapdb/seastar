@@ -24,11 +24,7 @@
 #include <seastar/core/format.hh>
 #include <seastar/core/sstring.hh>
 
-#if defined(STDB_USE_FMT_MODULE)
-#include <seastar/util/fmt.hh>
-#else
 #include <fmt/format.h>
-#endif
 
 #include <boost/any.hpp>
 #include <boost/intrusive/list.hpp>

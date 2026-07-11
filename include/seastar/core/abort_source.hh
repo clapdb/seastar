@@ -223,7 +223,7 @@ public:
 
 }
 
-#if !defined(STDB_USE_FMT_MODULE) && FMT_VERSION < 100000
+#if FMT_VERSION < 100000
 // fmt v10 introduced formatter for std::exception
 template <>
 struct fmt::formatter<seastar::abort_requested_exception> : fmt::formatter<string_view> {

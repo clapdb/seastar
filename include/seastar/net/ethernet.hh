@@ -21,11 +21,7 @@
 
 #pragma once
 
-#if defined(STDB_USE_FMT_MODULE)
-#include <seastar/util/fmt.hh>
-#else
 #include <fmt/ostream.h>
-#endif
 
 #include <array>
 #include <algorithm>
