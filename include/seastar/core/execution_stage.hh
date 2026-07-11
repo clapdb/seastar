@@ -31,11 +31,7 @@
 #include <seastar/util/noncopyable_function.hh>
 #include <seastar/util/tuple_utils.hh>
 #include <seastar/util/std-compat.hh>
-#if defined(STDB_USE_FMT_MODULE)
-#include <seastar/util/fmt.hh>
-#else
 #include <fmt/format.h>
-#endif
 #include <vector>
 #include <boost/container/static_vector.hpp>
 

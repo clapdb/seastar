@@ -25,11 +25,7 @@
 #include <seastar/util/is_smart_ptr.hh>
 #include <seastar/util/indirect.hh>
 #include <boost/intrusive/parent_from_member.hpp>
-#if defined(STDB_USE_FMT_MODULE)
-#include <seastar/util/fmt.hh>
-#else
 #include <fmt/core.h>
-#endif
 #include <concepts>
 #include <ostream>
 #include <type_traits>

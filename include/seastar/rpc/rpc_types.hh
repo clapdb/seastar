@@ -21,13 +21,9 @@
 
 #pragma once
 
-#if defined(STDB_USE_FMT_MODULE)
-#include <seastar/util/fmt.hh>
-#else
 #include <fmt/ostream.h>
 #if FMT_VERSION >= 100000
 #include <fmt/std.h>
-#endif
 #endif
 
 #include <seastar/net/api.hh>
@@ -452,7 +448,7 @@ struct fmt::formatter<seastar::rpc::connection_id> {
     }
 };
 
-#if !defined(STDB_USE_FMT_MODULE) && FMT_VERSION < 100000
+#if FMT_VERSION < 100000
 // fmt v10 introduced formatter for std::exception
 template <std::derived_from<seastar::rpc::error> T>
 struct fmt::formatter<T> : fmt::formatter<string_view> {
@@ -462,7 +458,7 @@ struct fmt::formatter<T> : fmt::formatter<string_view> {
 };
 #endif
 
-#if !defined(STDB_USE_FMT_MODULE) && FMT_VERSION < 100000
+#if FMT_VERSION < 100000
 template <typename T>
 struct fmt::formatter<seastar::rpc::optional<T>> {
     constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
