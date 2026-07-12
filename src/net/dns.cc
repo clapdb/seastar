@@ -46,6 +46,7 @@
 #include <memory>
 
 #include <ares.h>
+#include <ares_version.h>
 #include <boost/lexical_cast.hpp>
 
 #include <ostream>
@@ -64,6 +65,14 @@
 #include <seastar/core/print.hh>
 
 namespace seastar::net {
+
+// c-ares 1.34.7 made ares_host_callback's hostent parameter const; 1.34.6 and earlier take it
+// non-const. Spell the type once, from the version, so seastar builds against either header.
+#if ARES_VERSION >= ((1 << 16) | (34 << 8) | 7)
+using ares_hostent_arg = const ::hostent*;
+#else
+using ares_hostent_arg = ::hostent*;
+#endif
 
 // NOTE: Should be prior to <seastar/util/log.hh> include because
 // logger::stringer_for<T> needs to see the corresponding `operator <<`
@@ -602,7 +611,7 @@ dns_resolver::impl::get_host_by_addr(inet_address addr) {
 
     dns_call call(*this);
 
-    ares_gethostbyaddr(_channel, p->addr.data(), p->addr.size(), int(p->addr.in_family()), [](void* arg, int status, int timeouts, const ::hostent* host) {
+    ares_gethostbyaddr(_channel, p->addr.data(), p->addr.size(), int(p->addr.in_family()), [](void* arg, int status, int timeouts, ares_hostent_arg host) {
         // we do potentially allocating operations below, so wrap the pointer in a
         // unique here.
         std::unique_ptr<promise_wrap> p(reinterpret_cast<promise_wrap *>(arg));
