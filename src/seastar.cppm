@@ -774,6 +774,8 @@ using seastar::tls::credentials_builder;
 using seastar::tls::x509_crt_format;
 using seastar::tls::listen;
 using seastar::tls::connect;
+using seastar::tls::wrap_client;
+using seastar::tls::wrap_server;
 using seastar::tls::session_resume_mode;
 using seastar::tls::tls_options;
 using seastar::tls::dh_params;
